@@ -78,6 +78,25 @@ MIUI kills background services aggressively. After first connect, grant
 the app: autostart (自启动), battery saver "No restrictions"
 (省电策略无限制), and lock it in the recents view.
 
+## CI & Releases
+
+`.github/workflows/android.yml` builds on every master push and PR
+touching `android/`, and publishes:
+
+- master push → rolling **pre-release** (movable `pre-release` tag,
+  assets replaced each run, never marked latest)
+- `v*` tag → stable **Release** with generated notes
+
+Artifacts: `BrookVPN-<version>-universal.apk` (4 ABIs),
+`BrookVPN-<version>-arm64.apk`, and `SHA256SUMS`. `versionName` comes
+from the tag; `versionCode` from the run number.
+
+Stable release signing is optional — set `ANDROID_KEYSTORE_BASE64`
+(base64 keystore), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`,
+`ANDROID_KEY_PASSWORD` as repo secrets. Without them the APKs are
+debug-signed (installable, but uninstall before switching to a properly
+signed build).
+
 ## Notes & limitations
 
 - Whitelist-only routing is implemented with

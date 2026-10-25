@@ -10,8 +10,9 @@ android {
     applicationId = "com.txthinking.brookvpn"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    // CI passes -PversionName/-PversionCode (e.g. from git tag and run number).
+    versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+    versionName = (project.findProperty("versionName") as String?) ?: "1.0"
     // Optional per-device slimming: ./gradlew assembleDebug -Pabi=arm64-v8a
     // (comma-separated list). Without the property all four ABIs are packaged.
     ndk {
@@ -19,10 +20,31 @@ android {
     }
   }
 
+  signingConfigs {
+    // Release signing from environment (CI decodes the keystore from repo
+    // secrets); falls back to the debug key so the APK is always installable.
+    create("release") {
+      val ksPath = System.getenv("BROOK_KEYSTORE_PATH")
+      val ksPass = System.getenv("BROOK_KEYSTORE_PASSWORD")
+      val ksAlias = System.getenv("BROOK_KEY_ALIAS")
+      if (ksPath != null && ksPass != null && ksAlias != null) {
+        storeFile = file(ksPath)
+        storePassword = ksPass
+        keyAlias = ksAlias
+        keyPassword = System.getenv("BROOK_KEY_PASSWORD") ?: ksPass
+      }
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      signingConfig = if (System.getenv("BROOK_KEYSTORE_PATH") != null) {
+        signingConfigs.getByName("release")
+      } else {
+        signingConfigs.getByName("debug")
+      }
     }
   }
   compileOptions {

@@ -3,7 +3,8 @@
 # (arm, arm64, x86, x86_64) consumed by app/.
 #
 # Requires: Go >= 1.24 (or GOTOOLCHAIN=auto), gomobile + gobind in PATH,
-# Android NDK. On restricted networks Go downloads honor HTTPS_PROXY.
+# Android NDK (ANDROID_NDK_HOME). On restricted networks, prefix with
+# proxy env vars, e.g. HTTPS_PROXY=socks5://127.0.0.1:1080 ./build-aar.sh
 set -e
 
 cd "$(dirname "$0")"
@@ -13,8 +14,6 @@ export ANDROID_NDK_HOME
 
 : "${GOTOOLCHAIN:=auto}"
 export GOTOOLCHAIN
-export HTTPS_PROXY="${HTTPS_PROXY:-socks5://127.0.0.1:1080}"
-export HTTP_PROXY="${HTTP_PROXY:-socks5://127.0.0.1:1080}"
 
 mkdir -p app/libs
 (cd mobile && go mod tidy && gomobile bind \

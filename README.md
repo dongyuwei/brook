@@ -21,6 +21,16 @@ cd android
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### CI 自动发布
+
+推送到 GitHub 后，`.github/workflows/android.yml` 自动工作：
+
+- **push master** → 自动构建并发布滚动 **pre-release**（tag `pre-release`，含 universal + arm64 两个 APK 和 SHA256 校验文件，每次覆盖更新）
+- **push tag `v*`**（如 `v1.0.0`）→ 构建并发布正式 **Release**，自动生成 release notes
+- 修改 `android/**` 的 PR → 仅构建验证，产物在 Actions 页面下载
+
+> 正式签名（可选）：在仓库 Secrets 配置 `ANDROID_KEYSTORE_BASE64`（keystore 的 base64）、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。未配置时 APK 用 debug 证书签名（可安装，但升级正式版前需卸载）。
+
 ### adb reverse 本机联调技巧（无需真实服务器）
 
 在电脑上起一个本地 brook server，用 `adb reverse` 把手机端口经 USB 反向映射到电脑，手机上用 `127.0.0.1` 就能连到电脑的服务器，随时测试：
