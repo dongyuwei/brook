@@ -47,6 +47,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -106,6 +110,8 @@ fun MainScreen(initialLink: String? = null) {
     var running by remember { mutableStateOf(BrookVpnService.running) }
     var error by remember { mutableStateOf<String?>(null) }
     var testResult by remember { mutableStateOf<String?>(null) }
+    // Link is masked like a password; the eye button reveals it.
+    var showLink by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Track the VPN service lifecycle.
@@ -205,7 +211,22 @@ fun MainScreen(initialLink: String? = null) {
                 label = { Text("Brook link") },
                 placeholder = { Text("brook://...") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
+                minLines = if (showLink) 2 else 1,
+                visualTransformation = if (showLink) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation('•')
+                },
+                // Masked: password keyboard (no suggestions); shown: URI keys.
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = if (showLink) KeyboardType.Uri else KeyboardType.Password,
+                ),
+                trailingIcon = {
+                    // Text-only toggle keeps the dependency set minimal.
+                    TextButton(onClick = { showLink = !showLink }) {
+                        Text(if (showLink) "Hide" else "Show")
+                    }
+                },
                 textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 enabled = !running,
             )
@@ -312,10 +333,23 @@ fun AppListScreen(onDone: () -> Unit) {
         }
     }
     var selected by remember { mutableStateOf(Prefs.whitelist(context)) }
+    var query by remember { mutableStateOf("") }
 
     fun persist(next: Set<String>) {
         selected = next
         Prefs.saveWhitelist(context, next)
+    }
+
+    // Selected apps float to the top (alphabetical among themselves),
+    // then the rest; both halves filtered by the search query on label
+    // or package name.
+    val display = remember(apps, selected, query) {
+        val q = query.trim().lowercase()
+        val matches = { a: AppEntry ->
+            q.isEmpty() || a.label.lowercase().contains(q) || a.packageName.lowercase().contains(q)
+        }
+        val (chosen, others) = apps.filter(matches).partition { it.packageName in selected }
+        chosen + others
     }
 
     Scaffold(
@@ -334,67 +368,76 @@ fun AppListScreen(onDone: () -> Unit) {
             )
         },
     ) { padding ->
-        if (apps.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) { Text("Loading…") }
-            return@Scaffold
-        }
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            items(apps, key = { it.packageName }) { app ->
-                val checked = app.packageName in selected
-                val bitmap by produceState(initialValue = null as Bitmap?, app) {
-                    value = withContext(Dispatchers.IO) { app.icon.toBitmap(96) }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            persist(
-                                if (checked) selected - app.packageName
-                                else selected + app.packageName,
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search apps") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            if (apps.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) { Text("Loading…") }
+                return@Column
+            }
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(display, key = { it.packageName }) { app ->
+                    val checked = app.packageName in selected
+                    val bitmap by produceState(initialValue = null as Bitmap?, app) {
+                        value = withContext(Dispatchers.IO) { app.icon.toBitmap(96) }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                persist(
+                                    if (checked) selected - app.packageName
+                                    else selected + app.packageName,
+                                )
+                            }
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val bmp = bitmap
+                        if (bmp != null) {
+                            Image(
+                                bmp.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                            )
+                        } else {
+                            Spacer(Modifier.size(40.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(app.label, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                app.packageName,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val bmp = bitmap
-                    if (bmp != null) {
-                        Image(
-                            bmp.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                        )
-                    } else {
-                        Spacer(Modifier.size(40.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(app.label, style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            app.packageName,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = {
+                                persist(
+                                    if (checked) selected - app.packageName
+                                    else selected + app.packageName,
+                                )
+                            },
                         )
                     }
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = {
-                            persist(
-                                if (checked) selected - app.packageName
-                                else selected + app.packageName,
-                            )
-                        },
-                    )
                 }
             }
         }
