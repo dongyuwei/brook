@@ -55,6 +55,29 @@ and Gradle uses `systemProp.*` proxy settings.
 2. Tap the whitelist row and check the apps that should be proxied.
 3. Connect. Android shows a one-time VPN consent dialog.
 
+### Local testing without a real server (adb reverse)
+
+Run a brook server on your computer and reverse-forward the phone's port
+over USB, then point the app at `127.0.0.1`:
+
+```bash
+# computer
+brook server -l 127.0.0.1:9999 -p testpass
+adb reverse tcp:9999 tcp:9999   # phone 127.0.0.1:9999 -> computer 127.0.0.1:9999
+```
+
+Import this link in the app:
+
+```
+brook://server?password=testpass&server=127.0.0.1:9999
+```
+
+### MIUI keep-alive
+
+MIUI kills background services aggressively. After first connect, grant
+the app: autostart (自启动), battery saver "No restrictions"
+(省电策略无限制), and lock it in the recents view.
+
 ## Notes & limitations
 
 - Whitelist-only routing is implemented with
