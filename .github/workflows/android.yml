@@ -52,7 +52,7 @@ jobs:
 
       - name: Locate or install Android NDK
         run: |
-          NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1 || true)
+          NDK_DIR=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort -V | tail -1 || true)
           if [ -z "$NDK_DIR" ]; then
             yes | sdkmanager "ndk;27.2.12479018" > /dev/null
             NDK_DIR="$ANDROID_HOME/ndk/27.2.12479018"
@@ -70,14 +70,26 @@ jobs:
       - name: Build brook.aar
         run: android/build-aar.sh
 
-      - name: Decode signing keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      # The secrets context is not allowed in step-level if-expressions, so
+      # guard inside the script with values passed through env instead.
+      - name: Decode signing keystore (if configured)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          echo "BROOK_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
-          echo "BROOK_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
-          echo "BROOK_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
-          echo "BROOK_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "No signing secrets configured; APKs will be debug-signed."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          {
+            echo "BROOK_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore"
+            echo "BROOK_KEYSTORE_PASSWORD=$KEYSTORE_PASS"
+            echo "BROOK_KEY_ALIAS=$KEY_ALIAS"
+            echo "BROOK_KEY_PASSWORD=$KEY_PASS"
+          } >> "$GITHUB_ENV"
 
       - name: Build APKs (universal + arm64)
         run: |
@@ -98,7 +110,7 @@ jobs:
           ./gradlew --no-daemon :app:assembleRelease "${ARGS[@]}" -Pabi=arm64-v8a
           cp app/build/outputs/apk/release/app-release.apk "dist/BrookVPN-$VERSION-arm64.apk"
 
-          (cd dist && shasum -a 256 *.apk > SHA256SUMS)
+          (cd dist && shasum -a 256 ./*.apk > SHA256SUMS)
           ls -lh dist/
 
       - name: Upload artifacts
