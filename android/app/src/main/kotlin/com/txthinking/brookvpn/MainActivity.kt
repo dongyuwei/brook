@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -58,6 +59,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.txthinking.brookvpn.BuildConfig
 import com.txthinking.brookvpn.ui.theme.BrookVPNTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -360,6 +362,33 @@ fun MainScreen(initialLink: String? = null) {
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+
+            Spacer(Modifier.weight(1f))
+            val versionText = listOfNotNull(
+                BuildConfig.GIT_TAG.takeIf { it.isNotBlank() },
+                "v" + BuildConfig.VERSION_NAME,
+                BuildConfig.GIT_HASH.takeIf { it.isNotBlank() },
+                BuildConfig.BUILD_DATE.takeIf { it.isNotBlank() },
+            ).joinToString("-")
+            Text(
+                versionText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "github.com/dongyuwei/brook",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/dongyuwei/brook")),
+                            )
+                        }
+                    }
+                    .padding(vertical = 4.dp),
+            )
         }
     }
 }

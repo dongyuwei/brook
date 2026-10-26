@@ -96,10 +96,17 @@ jobs:
           cd android
           if [[ "$GITHUB_REF_NAME" == v* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
+            GIT_TAG="$GITHUB_REF_NAME"
           else
             VERSION="0.0.0-dev.$GITHUB_RUN_NUMBER"
+            GIT_TAG=""
           fi
-          ARGS=(-PversionName="$VERSION" -PversionCode="$GITHUB_RUN_NUMBER")
+          ARGS=(
+            -PversionName="$VERSION" -PversionCode="$GITHUB_RUN_NUMBER"
+            -PgitTag="$GIT_TAG"
+            -PgitHash="$(git rev-parse --short HEAD)"
+            -PbuildDate="$(date -u +%Y%m%d)"
+          )
 
           # Both variants write to app-release.apk, so snapshot each one
           # before building the next.

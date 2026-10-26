@@ -18,6 +18,12 @@ android {
     ndk {
       (project.findProperty("abi") as String?)?.split(",")?.let { abiFilters.addAll(it) }
     }
+    // Build stamp shown in the app footer: tag-version-hash-date.
+    // CI passes -PgitTag/-PgitHash/-PbuildDate; local builds show only the version.
+    fun prop(name: String) = (project.findProperty(name) as String?)?.trim().orEmpty()
+    buildConfigField("String", "GIT_TAG", "\"${prop("gitTag")}\"")
+    buildConfigField("String", "GIT_HASH", "\"${prop("gitHash")}\"")
+    buildConfigField("String", "BUILD_DATE", "\"${prop("buildDate")}\"")
   }
 
   signingConfigs {
@@ -54,7 +60,7 @@ android {
   buildFeatures {
     compose = true
     aidl = false
-    buildConfig = false
+    buildConfig = true
     shaders = false
   }
 
