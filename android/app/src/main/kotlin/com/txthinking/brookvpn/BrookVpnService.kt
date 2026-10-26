@@ -108,10 +108,12 @@ class BrookVpnService : VpnService() {
             .addAddress("fd00::1", 126)
             .addRoute("0.0.0.0", 0)
             .addRoute("::", 0)
-            // Public resolvers: app DNS queries travel through the tunnel
-            // and are resolved remotely by the brook server.
-            .addDnsServer("223.5.5.5")
-            .addDnsServer("8.8.8.8")
+        // Editable DNS (Prefs): queries travel through the tunnel and are
+        // resolved remotely by the brook server (no local resolution).
+        val dnsServers = Prefs.dns(this).ifEmpty {
+            Prefs.DEFAULT_DNS.split(',').map { it.trim() }
+        }
+        for (dns in dnsServers) builder.addDnsServer(dns)
         for (pkg in whitelist) {
             if (pkg == packageName) continue // never route our own traffic
             try {

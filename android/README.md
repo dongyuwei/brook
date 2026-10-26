@@ -55,6 +55,10 @@ and Gradle uses `systemProp.*` proxy settings.
 2. Tap the whitelist row and check the apps that should be proxied.
 3. Connect. Android shows a one-time VPN consent dialog.
 
+DNS servers are editable on the main screen (default `1.1.1.1, 8.8.8.8`,
+comma-separated IPs); queries are always resolved remotely through the
+tunnel and changes apply on the next connect.
+
 ### Local testing without a real server (adb reverse)
 
 Run a brook server on your computer and reverse-forward the phone's port

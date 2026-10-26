@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -112,6 +113,9 @@ fun MainScreen(initialLink: String? = null) {
     var testResult by remember { mutableStateOf<String?>(null) }
     // Link is masked like a password; the eye button reveals it.
     var showLink by remember { mutableStateOf(false) }
+    var dnsRaw by remember { mutableStateOf(Prefs.dnsRaw(context)) }
+    var editDns by remember { mutableStateOf("") }
+    var showDnsDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Track the VPN service lifecycle.
@@ -193,6 +197,39 @@ fun MainScreen(initialLink: String? = null) {
         return
     }
 
+    if (showDnsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDnsDialog = false },
+            title = { Text("DNS servers") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Comma-separated IP addresses. Queries are resolved " +
+                            "remotely by the brook server through the tunnel.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedTextField(
+                        value = editDns,
+                        onValueChange = { editDns = it },
+                        label = { Text(Prefs.DEFAULT_DNS) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    Prefs.saveDns(context, editDns)
+                    dnsRaw = editDns.trim()
+                    showDnsDialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDnsDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.app_name)) })
@@ -263,6 +300,30 @@ fun MainScreen(initialLink: String? = null) {
                     Text(
                         if (whitelistCount == 0) "None selected - VPN will not start"
                         else "$whitelistCount app(s) proxied, others direct",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text("Edit", color = MaterialTheme.colorScheme.primary)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { editDns = dnsRaw; showDnsDialog = true }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("DNS servers", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        Prefs.dns(context).joinToString(", ").ifEmpty { "No valid entry - falls back to ${Prefs.DEFAULT_DNS}" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        if (running) "Applies on next connect" else "Resolved remotely through the tunnel",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
