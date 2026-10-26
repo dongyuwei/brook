@@ -15,7 +15,7 @@ A cross-platform programmable network tool.
 
 ```bash
 cd android
-./build-aar.sh                                # gomobile 产出 app/libs/brook.aar（需 Go + NDK）
+./build-aar.sh                                # gomobile 产出 app/libs/brook.aar（需 Go ≥ 1.26 + NDK，旧版 Go 会经 GOTOOLCHAIN=auto 自动下载工具链）
 ./gradlew :app:assembleDebug                  # 通用包（约 112MB，含 4 个 ABI）
 ./gradlew :app:assembleDebug -Pabi=arm64-v8a  # 单 ABI 瘦身包（约 37MB）
 adb install -r app/build/outputs/apk/debug/app-debug.apk

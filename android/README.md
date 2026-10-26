@@ -36,9 +36,13 @@ brook server; everything else uses the underlying network directly.
 
 ## Build
 
-Requirements: Go >= 1.24 (or `GOTOOLCHAIN=auto`), gomobile + gobind
-(`go install golang.org/x/mobile/cmd/gomobile@latest` and
-`.../cmd/gobind@latest`), Android NDK (set `ANDROID_NDK_HOME`), JDK 17.
+Requirements: gomobile + gobind (`go install golang.org/x/mobile/cmd/gomobile@latest`
+and `.../cmd/gobind@latest`), Android NDK (set `ANDROID_NDK_HOME`), JDK 17.
+
+Go version: brook itself needs Go >= 1.24, but golang.org/x/mobile (gomobile)
+currently requires Go >= 1.26 — install Go >= 1.26 (tested with 1.27.x).
+`build-aar.sh` defaults to `GOTOOLCHAIN=auto`, so older Go toolchains also
+work: the required toolchain is downloaded transparently (network needed).
 
 ```
 ./build-aar.sh
